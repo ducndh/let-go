@@ -8,7 +8,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"snippetbox.letgoducndh.net/internal/models"
 )
 
 type config struct {
@@ -20,6 +21,7 @@ type config struct {
 type application struct {
 	errorLog *log.Logger
 	infoLog  *log.Logger
+	snippets *models.SnippetModel
 }
 
 func main() {
@@ -30,22 +32,12 @@ func main() {
 	flag.StringVar(&cfg.staticDir, "static-dir", "./ui/static", "Path to static assets")
 	flag.Parse()
 
-	conn, err := pgx.Connect(context.Background(), cfg.dsn)
+	dbpool, err := pgxpool.New(context.Background(), cfg.dsn)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Unable to create connection pool: %v\n", err)
 		os.Exit(1)
 	}
-	defer conn.Close(context.Background())
-
-	var title string
-	var content string
-	err = conn.QueryRow(context.Background(), "select title, content from snippets").Scan(&title, &content)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "QueryRow failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Println(title, content)
+	defer dbpool.Close()
 
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
@@ -53,6 +45,7 @@ func main() {
 	app := &application{
 		errorLog: errorLog,
 		infoLog:  infoLog,
+		snippets: &models.SnippetModel{DB: dbpool},
 	}
 
 	infoLog.Printf("Starting server on %s", cfg.addr)
