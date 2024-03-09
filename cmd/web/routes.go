@@ -1,9 +1,11 @@
 package main
 
-import "net/http"
+import (
+	"net/http"
+)
 
 // The routes() method returns a servemux containing our application routes.
-func (app *application) routes() *http.ServeMux {
+func (app *application) routes(cfg config) *http.ServeMux {
 	mux := http.NewServeMux()
 	fileServer := http.FileServer(neuteredFileSystem{http.Dir(cfg.staticDir)})
 	mux.Handle("/static", http.NotFoundHandler())
