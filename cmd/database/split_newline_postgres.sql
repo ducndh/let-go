@@ -1,0 +1,1 @@
+UPDATE snippets SET content = REPLACE(content, '\n', E'\n');

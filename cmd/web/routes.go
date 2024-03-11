@@ -11,9 +11,9 @@ func (app *application) routes(cfg config) *http.ServeMux {
 	mux.Handle("/static", http.NotFoundHandler())
 	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
 
-	mux.HandleFunc("/", app.home)
-	mux.HandleFunc("/curse", app.curse)
-	mux.HandleFunc("/view", app.view)
-	mux.HandleFunc("/create", app.create)
+	mux.HandleFunc("/", app.Home)
+	mux.HandleFunc("/curse", app.Curse)
+	mux.HandleFunc("/view", app.View)
+	mux.HandleFunc("/create", app.Create)
 	return mux
 }

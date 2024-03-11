@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"text/template"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"snippetbox.letgoducndh.net/internal/models"
@@ -19,9 +20,10 @@ type config struct {
 }
 
 type application struct {
-	errorLog *log.Logger
-	infoLog  *log.Logger
-	snippets *models.SnippetModel
+	errorLog      *log.Logger
+	infoLog       *log.Logger
+	snippets      *models.SnippetModel
+	templateCache map[string]*template.Template
 }
 
 func main() {
@@ -32,6 +34,9 @@ func main() {
 	flag.StringVar(&cfg.staticDir, "static-dir", "./ui/static", "Path to static assets")
 	flag.Parse()
 
+	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
+	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
+
 	dbpool, err := pgxpool.New(context.Background(), cfg.dsn)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to create connection pool: %v\n", err)
@@ -39,16 +44,17 @@ func main() {
 	}
 	defer dbpool.Close()
 
-	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
-	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
-
-	app := &application{
-		errorLog: errorLog,
-		infoLog:  infoLog,
-		snippets: &models.SnippetModel{DB: dbpool},
+	templateCache, err := newTemplateCache()
+	if err != nil {
+		errorLog.Fatal(err)
 	}
 
-	infoLog.Printf("Starting server on %s", cfg.addr)
+	app := &application{
+		errorLog:      errorLog,
+		infoLog:       infoLog,
+		snippets:      &models.SnippetModel{DB: dbpool},
+		templateCache: templateCache,
+	}
 
 	srv := &http.Server{
 		Addr:     cfg.addr,
@@ -56,6 +62,7 @@ func main() {
 		Handler:  app.routes(cfg),
 	}
 
+	infoLog.Printf("Starting server on %s", cfg.addr)
 	err = srv.ListenAndServe()
 	errorLog.Fatal(err)
 }

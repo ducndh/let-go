@@ -1,17 +1,43 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
 	"strconv"
-	"text/template"
 
 	"snippetbox.letgoducndh.net/internal/models"
 )
 
-func (app *application) home(w http.ResponseWriter, r *http.Request) {
+func (app *application) render(w http.ResponseWriter, status int, page string, data *templateData) {
+	ts, ok := app.templateCache[page]
+	if !ok {
+		err := fmt.Errorf("the template %s does not exist", page)
+		app.serverError(w, err)
+		return
+	}
+	// Initialize a new buffer.
+	buf := new(bytes.Buffer)
+	// Write the template to the buffer, instead of straight to the
+	// http.ResponseWriter. If there's an error, call our serverError() helper
+	// and then return.
+	err := ts.ExecuteTemplate(buf, "base", data)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	// If the template is written to the buffer without any errors, we are safe
+	// to go ahead and write the HTTP status code to http.ResponseWriter.
+	w.WriteHeader(status)
+	// Write the contents of the buffer to the http.ResponseWriter. Note: this
+	// is another time where we pass our http.ResponseWriter to a function that
+	// takes an io.Writer.
+	buf.WriteTo(w)
+}
+
+func (app *application) Home(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		app.notFound(w)
 		return
@@ -22,71 +48,39 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 		return
 	}
-	for _, snippet := range snippets {
-		fmt.Fprintf(w, "%+v\n", snippet)
-	}
-
-	// files := []string{
-	// 	"./ui/html/base.tmpl",
-	// 	"./ui/html/partials/nav.tmpl",
-	// 	"./ui/html/pages/home.tmpl",
-	// }
-
-	// ts, err := template.ParseFiles(files...)
-	// if err != nil {
-	// 	app.errorLog.Print(err.Error())
-	// 	app.serverError(w, err)
-	// 	return
-	// }
-
-	// err = ts.ExecuteTemplate(w, "base", nil)
-	// if err != nil {
-	// 	app.errorLog.Print(err.Error())
-	// 	app.serverError(w, err)
-	// }
+	data := app.newTemplateData(r)
+	data.Snippets = snippets
+	// Pass the data to the render() helper as normal.
+	app.render(w, http.StatusOK, "home.tmpl", data)
 }
 
-func (app *application) curse(w http.ResponseWriter, r *http.Request) {
+func (app *application) Curse(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("From hell and back"))
 }
 
-func (app *application) view(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.Atoi(r.URL.Query().Get("id"))
-		if err != nil || id < 1 {
+func (app *application) View(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil || id < 1 {
 		app.notFound(w)
 		return
-		}
-		snippet, err := app.snippets.Get(id)
-		if err != nil {
+	}
+	snippet, err := app.snippets.Get(id)
+	if err != nil {
 		if errors.Is(err, models.ErrNoRecord) {
-		app.notFound(w)
+			app.notFound(w)
 		} else {
-		app.serverError(w, err)
+			app.serverError(w, err)
 		}
 		return
-		}
-		// Initialize a slice containing the paths to the view.tmpl file,
-		// plus the base layout and navigation partial that we made earlier.
-		files := []string{
-		"./ui/html/base.tmpl",
-		"./ui/html/partials/nav.tmpl",
-		"./ui/html/pages/view.tmpl",
-		}
-		// Parse the template files...
-		ts, err := template.ParseFiles(files...)
-		if err != nil {
-		app.serverError(w, err)
-		return
-		}
-		// And then execute them. Notice how we are passing in the snippet
-		// data (a models.Snippet struct) as the final parameter?
-		err = ts.ExecuteTemplate(w, "base", snippet)
-		if err != nil {
-		app.serverError(w, err)
-		}
-		}
+	}
 
-func (app *application) create(w http.ResponseWriter, r *http.Request) {
+	// Use the new render helper.
+	data := app.newTemplateData(r)
+	data.Snippet = snippet
+	app.render(w, http.StatusOK, "view.tmpl", data)
+}
+
+func (app *application) Create(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.Header().Set("Allow", http.MethodPost)
 		app.clientError(w, http.StatusMethodNotAllowed)
