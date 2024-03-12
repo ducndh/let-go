@@ -58,7 +58,7 @@ func (app *application) curse(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) view(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil || id < 1 {
 		app.notFound(w)
 		return
@@ -80,6 +80,10 @@ func (app *application) view(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) create(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Successful Get"))
+}
+
+func (app *application) createPost(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.Header().Set("Allow", http.MethodPost)
 		app.clientError(w, http.StatusMethodNotAllowed)
@@ -99,7 +103,7 @@ func (app *application) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Redirect the user to the relevant page for the snippet.
-	http.Redirect(w, r, fmt.Sprintf("/view?id=%d", id), http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/view/%d", id), http.StatusSeeOther)
 
 	w.Write([]byte("Successful POST"))
 }

@@ -15,8 +15,9 @@ func (app *application) routes(cfg config) http.Handler {
 
 	mux.HandleFunc("/", app.home)
 	mux.HandleFunc("/curse", app.curse)
-	mux.HandleFunc("/view", app.view)
-	mux.HandleFunc("/create", app.create)
+	mux.HandleFunc("GET /view/{id}", app.view)
+	mux.HandleFunc("GET /create", app.create)
+	mux.HandleFunc("POST /create", app.createPost)
 	standard := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
 	return standard.Then(mux)
 }
