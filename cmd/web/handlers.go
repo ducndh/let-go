@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"strconv"
 
 	"snippetbox.letgoducndh.net/internal/models"
@@ -37,7 +36,7 @@ func (app *application) render(w http.ResponseWriter, status int, page string, d
 	buf.WriteTo(w)
 }
 
-func (app *application) Home(w http.ResponseWriter, r *http.Request) {
+func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		app.notFound(w)
 		return
@@ -54,11 +53,11 @@ func (app *application) Home(w http.ResponseWriter, r *http.Request) {
 	app.render(w, http.StatusOK, "home.tmpl", data)
 }
 
-func (app *application) Curse(w http.ResponseWriter, r *http.Request) {
+func (app *application) curse(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("From hell and back"))
 }
 
-func (app *application) View(w http.ResponseWriter, r *http.Request) {
+func (app *application) view(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil || id < 1 {
 		app.notFound(w)
@@ -80,7 +79,7 @@ func (app *application) View(w http.ResponseWriter, r *http.Request) {
 	app.render(w, http.StatusOK, "view.tmpl", data)
 }
 
-func (app *application) Create(w http.ResponseWriter, r *http.Request) {
+func (app *application) create(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.Header().Set("Allow", http.MethodPost)
 		app.clientError(w, http.StatusMethodNotAllowed)
@@ -103,30 +102,4 @@ func (app *application) Create(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/view?id=%d", id), http.StatusSeeOther)
 
 	w.Write([]byte("Successful POST"))
-}
-
-type neuteredFileSystem struct {
-	fs http.FileSystem
-}
-
-func (nfs neuteredFileSystem) Open(path string) (http.File, error) {
-	f, err := nfs.fs.Open(path)
-	if err != nil {
-		return nil, err
-	}
-
-	s, err := f.Stat()
-	if s.IsDir() {
-		index := filepath.Join(path, "index.html")
-		if _, err := nfs.fs.Open(index); err != nil {
-			closeErr := f.Close()
-			if closeErr != nil {
-				return nil, closeErr
-			}
-
-			return nil, err
-		}
-	}
-
-	return f, nil
 }
