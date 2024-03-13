@@ -8,7 +8,15 @@ import (
 	"strconv"
 
 	"snippetbox.letgoducndh.net/internal/models"
+	"snippetbox.letgoducndh.net/internal/validator"
 )
+
+type snippetCreateForm struct {
+	Title               string `form:"title"`
+	Content             string `form:"content"`
+	Expires             int    `form:"expires"`
+	validator.Validator `form:"-"`
+}
 
 func (app *application) render(w http.ResponseWriter, status int, page string, data *templateData) {
 	ts, ok := app.templateCache[page]
@@ -17,22 +25,16 @@ func (app *application) render(w http.ResponseWriter, status int, page string, d
 		app.serverError(w, err)
 		return
 	}
-	// Initialize a new buffer.
 	buf := new(bytes.Buffer)
-	// Write the template to the buffer, instead of straight to the
-	// http.ResponseWriter. If there's an error, call our serverError() helper
-	// and then return.
+
 	err := ts.ExecuteTemplate(buf, "base", data)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
-	// If the template is written to the buffer without any errors, we are safe
-	// to go ahead and write the HTTP status code to http.ResponseWriter.
+
 	w.WriteHeader(status)
-	// Write the contents of the buffer to the http.ResponseWriter. Note: this
-	// is another time where we pass our http.ResponseWriter to a function that
-	// takes an io.Writer.
+
 	buf.WriteTo(w)
 }
 
@@ -80,30 +82,41 @@ func (app *application) view(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) create(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Successful Get"))
+	data := app.newTemplateData(r)
+
+	data.Form = snippetCreateForm{
+		Expires: 365,
+	}
+	app.render(w, http.StatusOK, "create.tmpl", data)
 }
 
 func (app *application) createPost(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.Header().Set("Allow", http.MethodPost)
-		app.clientError(w, http.StatusMethodNotAllowed)
+	var form snippetCreateForm
+	err := app.decodePostForm(r, &form)
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
 		return
 	}
 
-	// Create some variables holding dummy data. We'll remove these later on
-	// during the build.
-	title := "O snail"
-	content := "O snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n– Kobayashi Issa"
-	expires := 7
-	// Pass the data to the SnippetModel.Insert() method, receiving the
-	// ID of the new record back.
-	id, err := app.snippets.Insert(title, content, expires)
+	form.CheckField(validator.NotBlank(form.Title), "title", "This field cannot be blank")
+	form.CheckField(validator.MaxChars(form.Title, 100), "title", "This field cannot be more than 100 characters long")
+	form.CheckField(validator.NotBlank(form.Content), "content", "This field cannot be blank")
+	form.CheckField(validator.PermittedInt(form.Expires, 1, 7, 365), "expires", "This field must equal 1, 7 or 365")
+
+	if !form.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "create.tmpl", data)
+		return
+	}
+
+	id, err := app.snippets.Insert(form.Title, form.Content, form.Expires)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
+
 	// Redirect the user to the relevant page for the snippet.
 	http.Redirect(w, r, fmt.Sprintf("/view/%d", id), http.StatusSeeOther)
 
-	w.Write([]byte("Successful POST"))
 }
