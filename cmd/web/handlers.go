@@ -59,6 +59,11 @@ func (app *application) curse(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("From hell and back"))
 }
 
+func (app *application) about(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	app.render(w, http.StatusOK, "about.tmpl", data)
+}
+
 func (app *application) view(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil || id < 1 {

@@ -23,9 +23,11 @@ type config struct {
 	addr      string
 	dsn       string
 	staticDir string
+	debug     bool
 }
 
 type application struct {
+	debug          bool
 	errorLog       *log.Logger
 	infoLog        *log.Logger
 	snippets       models.SnippetModelInterface
@@ -39,6 +41,7 @@ func main() {
 	var cfg config
 	flag.StringVar(&cfg.addr, "addr", ":4000", "HTTP network address")
 	flag.StringVar(&cfg.dsn, "dsn", "dbname=mydb port=5432 sslmode=disable", "Postgres data source name")
+	flag.BoolVar(&cfg.debug, "debug", false, "Debug mode enabled")
 	flag.Parse()
 
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
@@ -65,6 +68,7 @@ func main() {
 	sessionManager.Cookie.Secure = true
 
 	app := &application{
+		debug:          cfg.debug,
 		errorLog:       errorLog,
 		infoLog:        infoLog,
 		snippets:       &models.SnippetModel{DB: dbpool},
