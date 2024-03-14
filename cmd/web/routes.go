@@ -13,7 +13,7 @@ func (app *application) routes(cfg config) http.Handler {
 	mux.Handle("/static", http.NotFoundHandler())
 	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
 
-	dynamic := alice.New(app.sessionManager.LoadAndSave)
+	dynamic := alice.New(app.sessionManager.LoadAndSave, noSurf)
 
 	mux.Handle("/", dynamic.ThenFunc(app.home))
 	mux.Handle("/curse", dynamic.ThenFunc(app.curse))
