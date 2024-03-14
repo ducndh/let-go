@@ -78,6 +78,7 @@ func (app *application) view(w http.ResponseWriter, r *http.Request) {
 	// Use the new render helper.
 	data := app.newTemplateData(r)
 	data.Snippet = snippet
+
 	app.render(w, http.StatusOK, "view.tmpl", data)
 }
 
@@ -116,7 +117,8 @@ func (app *application) createPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Redirect the user to the relevant page for the snippet.
+	app.sessionManager.Put(r.Context(), "flash", "Snippet successfully created!")
+
 	http.Redirect(w, r, fmt.Sprintf("/view/%d", id), http.StatusSeeOther)
 
 }

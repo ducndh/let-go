@@ -5,6 +5,9 @@ go 1.22.0
 require github.com/justinas/alice v1.2.0
 
 require (
+	github.com/alexedwards/scs/pgxstore v0.0.0-20240203174419-a38e822451b6 // indirect
+	github.com/alexedwards/scs/postgresstore v0.0.0-20240203174419-a38e822451b6 // indirect
+	github.com/alexedwards/scs/v2 v2.7.0 // indirect
 	github.com/go-playground/form/v4 v4.2.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
