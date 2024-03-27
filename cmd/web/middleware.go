@@ -19,17 +19,13 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		// Otherwise, we check to see if a user with that ID exists in our
-		// database.
+
 		exists, err := app.users.Exists(id)
 		if err != nil {
 			app.serverError(w, err)
 			return
 		}
-		// If a matching user is found, we know that the request is
-		// coming from an authenticated user who exists in our database. We
-		// create a new copy of the request (with an isAuthenticatedContextKey
-		// value of true in the request context) and assign it to r.
+
 		if exists {
 			ctx := context.WithValue(r.Context(), isAuthenticatedContextKey, true)
 			r = r.WithContext(ctx)

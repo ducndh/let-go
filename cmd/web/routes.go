@@ -4,15 +4,14 @@ import (
 	"net/http"
 
 	"github.com/justinas/alice"
-	"snippetbox.letgoducndh.net/ui"
 )
 
 // The routes() method returns a servemux containing our application routes.
 func (app *application) routes() http.Handler {
 	mux := http.NewServeMux()
-	fileServer := http.FileServer(http.FS(ui.Files))
-	mux.Handle("GET /static/*filepath", fileServer)
-
+	fileServer := http.FileServer(neuteredFileSystem{http.Dir("./ui/static")})
+	mux.Handle("/static", http.NotFoundHandler())
+	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
 	mux.HandleFunc("GET /ping", ping)
 
 	dynamic := alice.New(app.sessionManager.LoadAndSave, noSurf, app.authenticate)
@@ -31,6 +30,7 @@ func (app *application) routes() http.Handler {
 
 	mux.Handle("GET /create", protected.ThenFunc(app.create))
 	mux.Handle("POST /create", protected.ThenFunc(app.createPost))
+	mux.Handle("GET /account/view", protected.ThenFunc(app.accountView))
 	mux.Handle("POST /user/logout", protected.ThenFunc(app.userLogoutPost))
 
 	standard := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
