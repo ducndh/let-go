@@ -40,16 +40,18 @@ func (m *UserModel) Insert(name, email, password string) error {
 	if err != nil {
 		return err
 	}
+
 	stmt := `INSERT INTO users (name, email, hashed_password, created) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`
 	rows, err := m.DB.Query(context.Background(), stmt, name, email, string(hashedPassword))
 	rows.Close()
+
 	if err != nil || rows.Err() != nil {
-		if pgErr, ok := rows.Err().(*pgconn.PgError); ok {
-			if pgErr.Code == "23505" && strings.Contains(pgErr.Message, "users_uc_email") {
-				return ErrDuplicateEmail
-			}
+		switch pgErr, notOK := rows.Err().(*pgconn.PgError); notOK {
+		case pgErr.Code == "23505" && strings.Contains(pgErr.Message, "users_uc_email"):
+			return ErrDuplicateEmail
+		default:
+			return err
 		}
-		return err
 	}
 	return nil
 }
